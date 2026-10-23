@@ -24,6 +24,8 @@ using namespace glm;
 GLuint generateVertexArrayObject(vector<vec3> vertices) {
   GLuint VAO;
   glGenVertexArrays(1, &VAO);
+
+  // Set as current
   glBindVertexArray(VAO);
 
   // A buffer is a reference in the VRAM
@@ -64,6 +66,7 @@ GLuint generateVertexArrayObject(vector<vec3> vertices) {
 
 GLuint loadShaders(const char *vertexShaderCode,
                    const char *fragmentShaderCode) {
+  // All shaders are contained inside a "program" that consists of a vertex and a fragment shader
   GLuint program = glCreateProgram();
 
   GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -121,6 +124,8 @@ int main(int argc, char *argv[]) {
         std::filesystem::canonical(argv[0]).parent_path();
     std::filesystem::current_path(exePath);
   }
+  // Initialize GLFW library and create window to draw on it
+  // GLFW manages the window
   glfwInit();
   GLFWwindow *window =
       glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, LECTURE_TITLE, NULL, NULL);
@@ -171,10 +176,12 @@ int main(int argc, char *argv[]) {
     // Numebr of vertices sat to 3 !
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
+    // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
+  // Free resources
   glfwTerminate();
   return 0;
 }
