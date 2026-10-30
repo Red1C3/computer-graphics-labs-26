@@ -2,6 +2,8 @@
 // Receive from the vertex shader
 in vec3 color;
 
+uniform float time;
+
 // Output to screen
 out vec4 FragColor;
 

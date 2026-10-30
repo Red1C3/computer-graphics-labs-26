@@ -114,7 +114,8 @@ int main(int argc, char *argv[]) {
       glGetUniformLocation(shaderProgram.getProgram(), "view");
   GLuint perspectiveMatrixLocation =
       glGetUniformLocation(shaderProgram.getProgram(), "perspective");
-
+  GLuint timeLocation=glGetUniformLocation(shaderProgram.getProgram(), "time");
+ 
   if (GLenum err = glGetError() != 0) {
     return err;
   }
@@ -171,6 +172,8 @@ int main(int argc, char *argv[]) {
     mat4 modelMatrix = translation * rotation;
 
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
+
+    glUniform1f(timeLocation,thisFrameTime);
 
     // Note that now we ALSO clear the depth values
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
