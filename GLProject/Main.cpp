@@ -1,4 +1,4 @@
-#define LECTURE_TITLE "Hello Triangle"
+#define LECTURE_TITLE "Hello Tetrahedron"
 #define WINDOW_HEIGHT 800
 #define WINDOW_WIDTH 800
 
@@ -11,7 +11,6 @@
 #include <iostream>
 #include <learnopengl/shader_s.h>
 #include <vector>
-
 
 #include "shaders.h"
 
@@ -66,7 +65,8 @@ GLuint generateVertexArrayObject(vector<vec3> vertices) {
 
 GLuint loadShaders(const char *vertexShaderCode,
                    const char *fragmentShaderCode) {
-  // All shaders are contained inside a "program" that consists of a vertex and a fragment shader
+  // All shaders are contained inside a "program" that consists of a vertex and
+  // a fragment shader
   GLuint program = glCreateProgram();
 
   GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -127,10 +127,21 @@ int main(int argc, char *argv[]) {
   // Initialize GLFW library and create window to draw on it
   // GLFW manages the window
   glfwInit();
+
+  // Set OpenGL Version
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  // Specify depth buffer bits as well so we can make use of depth features
+  glfwWindowHint(GLFW_DEPTH_BITS, 24);
+
   GLFWwindow *window =
       glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, LECTURE_TITLE, NULL, NULL);
   glfwMakeContextCurrent(window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+  // Enable depth
+  glEnable(GL_DEPTH_TEST);
 
   // Notice how a single array is used for both positon and color data
   GLuint triangleVAO = generateVertexArrayObject({
