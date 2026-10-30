@@ -8,116 +8,20 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
-#include <learnopengl/shader_s.h>
 #include <vector>
 
-#include "shaders.h"
+#include "model.h"
+#include "shader_program.h"
 
 using namespace std;
 using namespace glm;
 
-// Vertex Array Object is like a reference to an object
-// It holds another reference to the object's location in VRAM
-// As well as how this object's data is going to be sent to the vertex shader
-GLuint generateVertexArrayObject(vector<vec3> vertices) {
-  GLuint VAO;
-  glGenVertexArrays(1, &VAO);
-
-  // Set as current
-  glBindVertexArray(VAO);
-
-  // A buffer is a reference in the VRAM
-  GLuint VBO;
-
-  // First we define a buffer
-  glGenBuffers(1, &VBO);
-
-  // Then we set it as the active buffer
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-  // Now we are ready to send data to VRAM
-  // We send the size of the whole data
-  // As well as the data itself
-  // Static draw tells the GPU we will not be writing to this buffer more than
-  // once
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * vertices.size(), vertices.data(),
-               GL_STATIC_DRAW);
-
-  // We describe how the data is read from the vertex shader
-  // Notice how the position is 3 floats so we set the stride (space between
-  // each vertex) to 3*sizeof(float)
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
-
-  // Notice the last parameter
-  // We skip the position data so this data starts at the fourth vector
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0,
-                        (void *)(3 * sizeof(vec3)));
-
-  // Finally we need to set the location 0 as enabled for position
-  glEnableVertexAttribArray(0);
-
-  // and location 1 as enabled for color
-  glEnableVertexAttribArray(1);
-
-  return VAO;
+void windowResizeCallback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
 }
 
-GLuint loadShaders(const char *vertexShaderCode,
-                   const char *fragmentShaderCode) {
-  // All shaders are contained inside a "program" that consists of a vertex and
-  // a fragment shader
-  GLuint program = glCreateProgram();
 
-  GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-  // We send the shader's code to the GPU
-  glShaderSource(vertexShader, 1, &vertexShaderCode, nullptr);
-  glCompileShader(vertexShader);
-
-  // Check if the shader compiled successfully
-  GLint success;
-  char infoLog[512];
-  glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-
-  // If not, draw the log
-  if (!success) {
-    glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-              << infoLog << std::endl;
-    return 0;
-  }
-
-  // Repeat the process for fragment shader
-  GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderCode, nullptr);
-  glCompileShader(fragmentShader);
-
-  glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-
-  if (!success) {
-    glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
-              << infoLog << std::endl;
-    return 0;
-  }
-
-  // Link the shaders together to form the final pipeline
-  glAttachShader(program, vertexShader);
-  glAttachShader(program, fragmentShader);
-  glLinkProgram(program);
-
-  // Check linking errors as well
-  glGetProgramiv(program, GL_LINK_STATUS, &success);
-  if (!success) {
-    glGetProgramInfoLog(program, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::PROGRAM::LINK_FAILED\n"
-              << infoLog << std::endl;
-    return 0;
-  }
-
-  return program;
-}
 int main(int argc, char *argv[]) {
   if (argc > 0) {
     std::filesystem::path exePath =
@@ -139,54 +43,138 @@ int main(int argc, char *argv[]) {
   GLFWwindow *window =
       glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, LECTURE_TITLE, NULL, NULL);
   glfwMakeContextCurrent(window);
+
+  glfwSetFramebufferSizeCallback(window, windowResizeCallback);
+
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
   // Enable depth
   glEnable(GL_DEPTH_TEST);
+  vector<vec3> positions = {};
 
-  // Notice how a single array is used for both positon and color data
-  GLuint triangleVAO = generateVertexArrayObject({
-      {-0.5f, -0.5f, 0.0f}, // pos[0]
-      {0.5f, -0.5f, 0.0f},  // pos[1]
-      {0.0f, 0.5f, 0.0f},   // pos[2]
-      {1.0f, 0.0f, 0.0f},   // color[0]
-      {0.0f, 1.0f, 0.0f},   // color[1]
-      {0.0f, 0.0f, 1.0f}    // color[2]
-  });
+  // First face
+  positions.push_back({1, 1, 1});
+  positions.push_back({1, -1, -1});
+  positions.push_back({-1, 1, -1});
 
-  if (GLenum err = glGetError() != 0) {
-    cout << "Failed to send the triangle data to VRAM" << endl;
-    return err;
+  // Second face
+  positions.push_back({1, 1, 1});
+  positions.push_back({1, -1, -1});
+  positions.push_back({-1, -1, 1});
+
+  // Third face
+  positions.push_back({1, -1, -1});
+  positions.push_back({-1, 1, -1});
+  positions.push_back({-1, -1, 1});
+
+  // Fourth face
+  positions.push_back({1, 1, 1});
+  positions.push_back({-1, 1, -1});
+  positions.push_back({-1, -1, 1});
+
+  vector<vec3> colors = {};
+
+  // First face
+  for (int i = 0; i < 3; ++i) {
+    colors.push_back({1, 1, 1});
   }
 
-  // Set the current "model" or vertex array object
-  glBindVertexArray(triangleVAO);
+  // Second face
+  for (int i = 0; i < 3; ++i) {
+    colors.push_back({1, 0, 0});
+  }
 
-  GLuint shaderProgram = loadShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+  // Third face
+  for (int i = 0; i < 3; ++i) {
+    colors.push_back({0, 1, 0});
+  }
 
-  if (!shaderProgram) {
+  // Forth face
+  for (int i = 0; i < 3; ++i) {
+    colors.push_back({0, 0, 1});
+  }
+
+  Model tetrahedron(positions, colors);
+  if (GLenum err = glGetError() != 0) {
+    return err;
+  }
+  ShaderProgram shaderProgram("shaders/shader.vert", "shaders/shader.frag");
+  if (shaderProgram.getError()) {
     return -1;
   }
 
   if (GLenum err = glGetError() != 0) {
-    cout << "Failed to create shader program" << endl;
     return err;
   }
 
-  // Set the current shading program (vertex + fragment shaders)
-  glUseProgram(shaderProgram);
+  // Each uniform has a location (think of it as an ID)
+  // Before we update the uniform we need to get its location
+  GLuint modelMatrixLocation =
+      glGetUniformLocation(shaderProgram.getProgram(), "model");
+  GLuint viewMatrixLocation =
+      glGetUniformLocation(shaderProgram.getProgram(), "view");
+  GLuint perspectiveMatrixLocation =
+      glGetUniformLocation(shaderProgram.getProgram(), "perspective");
+
+  if (GLenum err = glGetError() != 0) {
+    return err;
+  }
+
+  // Note that we cannot update the uniform without setting the shader program
+  // first
+  glUseProgram(shaderProgram.getProgram());
+
+  vec3 cameraPosition{0, 0, 0};
+  vec3 lookedAt{0, 0, -1};
+  vec3 up{0, 1, 0};
+
+  // View matrix controls the camera/observer
+  mat4 viewMatrix = lookAt(cameraPosition, lookedAt, up);
+
+  // We send the pointer to the first element of the matrix (notice the [0][0])
+  glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]);
+
+  float fieldOfView = 45.0f;
+  float aspectRatio = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
+  float nearPlane = 0.01f;
+  float farPlane = 100.0f;
+
+  mat4 perspectiveMatrix =
+      perspective(fieldOfView, aspectRatio, nearPlane, farPlane);
+
+  glUniformMatrix4fv(perspectiveMatrixLocation, 1, GL_FALSE,
+                     &perspectiveMatrix[0][0]);
+
+  if (GLenum err = glGetError() != 0) {
+    return err;
+  }
+
+  // We'll use this angle to rotate the tetrahedron
+  float angle = 0.f;
+
+  double lastFrameTime = glfwGetTime();
 
   while (!glfwWindowShouldClose(window)) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
       glfwSetWindowShouldClose(window, true);
 
-    // Reset the screen pixels !
-    glClear(GL_COLOR_BUFFER_BIT);
+    double thisFrameTime = glfwGetTime();
+    double deltaTime = thisFrameTime - lastFrameTime;
+    lastFrameTime = thisFrameTime;
 
-    // Draw the triangle
-    // Vertices offset sat to 0
-    // Numebr of vertices sat to 3 !
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    angle += deltaTime;
 
+    mat4 rotation = rotate(mat4(1.0f), angle, {0, 1, 0});
+    mat4 translation = translate(mat4(1.0f), {0, 0, -5});
+
+    // We first apply the rotation (around the center)
+    // Followed by a translation
+    mat4 modelMatrix = translation * rotation;
+
+    glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
+
+    // Note that now we ALSO clear the depth values
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    tetrahedron.draw();
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
     glfwPollEvents();
