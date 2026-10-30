@@ -5,6 +5,8 @@ layout(location = 1) in vec3 vertexColor;
 
 // Uniform matrices sent from the CPU
 uniform mat4 model, view, perspective;
+
+// Uniform time sent from the CPU
 uniform float time;
 
 // Send to the fragment shader

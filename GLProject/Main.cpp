@@ -16,6 +16,8 @@
 using namespace std;
 using namespace glm;
 
+
+// Gets called whenever the application window is resized
 void windowResizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -44,11 +46,14 @@ int main(int argc, char *argv[]) {
       glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, LECTURE_TITLE, NULL, NULL);
   glfwMakeContextCurrent(window);
 
+  // Set the window resize callback
   glfwSetFramebufferSizeCallback(window, windowResizeCallback);
 
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+  
   // Enable depth
   glEnable(GL_DEPTH_TEST);
+
   vector<vec3> positions = {};
 
   // First face
@@ -93,11 +98,16 @@ int main(int argc, char *argv[]) {
     colors.push_back({0, 0, 1});
   }
 
+  // Define a 3D model using the position and color data
   Model tetrahedron(positions, colors);
+
   if (GLenum err = glGetError() != 0) {
     return err;
   }
+  
+  // Load and link shader files
   ShaderProgram shaderProgram("shaders/shader.vert", "shaders/shader.frag");
+  
   if (shaderProgram.getError()) {
     return -1;
   }
@@ -152,6 +162,8 @@ int main(int argc, char *argv[]) {
   // We'll use this angle to rotate the tetrahedron
   float angle = 0.f;
 
+  // Store the time of the last frame, this will be the first frame since it is outside
+  // the for loop
   double lastFrameTime = glfwGetTime();
 
   while (!glfwWindowShouldClose(window)) {
@@ -159,9 +171,12 @@ int main(int argc, char *argv[]) {
       glfwSetWindowShouldClose(window, true);
 
     double thisFrameTime = glfwGetTime();
+
+    // Calculate the time passed between both frames
     double deltaTime = thisFrameTime - lastFrameTime;
     lastFrameTime = thisFrameTime;
 
+    // Add the change to the rotation angle
     angle += deltaTime;
 
     mat4 rotation = rotate(mat4(1.0f), angle, {0, 1, 0});
@@ -173,11 +188,15 @@ int main(int argc, char *argv[]) {
 
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
 
+    // Set the time variable value
     glUniform1f(timeLocation,thisFrameTime);
 
     // Note that now we ALSO clear the depth values
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw the tetrahedron, the final result will be translated and rotated
     tetrahedron.draw();
+    
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
     glfwPollEvents();
