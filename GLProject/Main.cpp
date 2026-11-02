@@ -16,13 +16,10 @@
 using namespace std;
 using namespace glm;
 
-
 // Gets called whenever the application window is resized
-void windowResizeCallback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
+void windowResizeCallback(GLFWwindow *window, int width, int height) {
+  glViewport(0, 0, width, height);
 }
-
 
 int main(int argc, char *argv[]) {
   if (argc > 0) {
@@ -50,7 +47,7 @@ int main(int argc, char *argv[]) {
   glfwSetFramebufferSizeCallback(window, windowResizeCallback);
 
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-  
+
   // Enable depth
   glEnable(GL_DEPTH_TEST);
 
@@ -101,13 +98,26 @@ int main(int argc, char *argv[]) {
   // Define a 3D model using the position and color data
   Model tetrahedron(positions, colors);
 
+  vector<vec3> positionsStripe = {};
+
+  for (float x = -2.0f; x < 2; x += 0.1f) {
+    float sinX = sin(x);
+
+    positionsStripe.push_back({x, sinX, 0});
+    positionsStripe.push_back({x, sinX + 1, 0});
+  }
+
+  vector<vec3> colorsStripe(positionsStripe.size(), {1, 1, 1});
+
+  Model stripe(positionsStripe, colorsStripe);
+
   if (GLenum err = glGetError() != 0) {
     return err;
   }
-  
+
   // Load and link shader files
   ShaderProgram shaderProgram("shaders/shader.vert", "shaders/shader.frag");
-  
+
   if (shaderProgram.getError()) {
     return -1;
   }
@@ -124,8 +134,9 @@ int main(int argc, char *argv[]) {
       glGetUniformLocation(shaderProgram.getProgram(), "view");
   GLuint perspectiveMatrixLocation =
       glGetUniformLocation(shaderProgram.getProgram(), "perspective");
-  GLuint timeLocation=glGetUniformLocation(shaderProgram.getProgram(), "time");
- 
+  GLuint timeLocation =
+      glGetUniformLocation(shaderProgram.getProgram(), "time");
+
   if (GLenum err = glGetError() != 0) {
     return err;
   }
@@ -162,8 +173,8 @@ int main(int argc, char *argv[]) {
   // We'll use this angle to rotate the tetrahedron
   float angle = 0.f;
 
-  // Store the time of the last frame, this will be the first frame since it is outside
-  // the for loop
+  // Store the time of the last frame, this will be the first frame since it is
+  // outside the for loop
   double lastFrameTime = glfwGetTime();
 
   while (!glfwWindowShouldClose(window)) {
@@ -189,14 +200,16 @@ int main(int argc, char *argv[]) {
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
 
     // Set the time variable value
-    glUniform1f(timeLocation,thisFrameTime);
+    glUniform1f(timeLocation, thisFrameTime);
 
     // Note that now we ALSO clear the depth values
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw the tetrahedron, the final result will be translated and rotated
-    tetrahedron.draw();
-    
+    tetrahedron.draw(GL_TRIANGLES);
+
+    //stripe.draw(GL_TRIANGLE_STRIP);
+
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
     glfwPollEvents();

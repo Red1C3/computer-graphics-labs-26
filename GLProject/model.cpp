@@ -38,9 +38,9 @@ Model::Model(vector<vec3> positions, vector<vec3> colors) {
     glEnableVertexAttribArray(1);
 }
 
-void Model::draw() {
+void Model::draw(GLint drawingMode) {
     // Note that we only need the VAO and vertices count to draw
     // Since all the data is now in the VRAM
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, verticesCount);
+    glDrawArrays(drawingMode, 0, verticesCount);
 }
