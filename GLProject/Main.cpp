@@ -98,6 +98,9 @@ int main(int argc, char *argv[]) {
   // Define a 3D model using the position and color data
   Model tetrahedron(positions, colors);
 
+  if (GLenum err = glGetError() != 0) {
+    return err;
+  }
   vector<vec3> positionsStripe = {};
 
   for (float x = -2.0f; x < 2; x += 0.1f) {
@@ -115,6 +118,22 @@ int main(int argc, char *argv[]) {
     return err;
   }
 
+  vector<vec3> positionsFan = {{0, 0, 0}};
+
+  for (float angle = 0.0f; angle <= 3.14f * 2.0f; angle += 0.1f) {
+    float x = cos(angle);
+    float y = sin(angle);
+
+    positionsFan.push_back({x, y, 0});
+  }
+
+  vector<vec3> colorsFan(positionsFan.size(), {1, 1, 1});
+
+  Model fan(positionsFan, colorsFan);
+
+  if (GLenum err = glGetError() != 0) {
+    return err;
+  }
   // Load and link shader files
   ShaderProgram shaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
@@ -206,9 +225,11 @@ int main(int argc, char *argv[]) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw the tetrahedron, the final result will be translated and rotated
-    tetrahedron.draw(GL_TRIANGLES);
+    // tetrahedron.draw(GL_TRIANGLES);
 
-    //stripe.draw(GL_TRIANGLE_STRIP);
+    // stripe.draw(GL_TRIANGLE_STRIP);
+
+    fan.draw(GL_TRIANGLE_FAN);
 
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
