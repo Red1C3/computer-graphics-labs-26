@@ -225,11 +225,11 @@ int main(int argc, char *argv[]) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw the tetrahedron, the final result will be translated and rotated
-    // tetrahedron.draw(GL_TRIANGLES);
+    tetrahedron.draw(GL_TRIANGLES);
 
     // stripe.draw(GL_TRIANGLE_STRIP);
 
-    fan.draw(GL_TRIANGLE_FAN);
+    //fan.draw(GL_TRIANGLE_FAN);
 
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
