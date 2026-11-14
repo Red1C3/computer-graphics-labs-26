@@ -17,7 +17,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "model.h"
 #include "shader_program.h"
 #include "textured_model.h"
 
