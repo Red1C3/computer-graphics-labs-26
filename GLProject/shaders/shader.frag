@@ -1,16 +1,15 @@
 #version 330 core
 // Receive from the vertex shader
-in vec3 color;
-
-// Uniform time sent from the CPU
-uniform float time;
+in vec2 uvOut;
 
 // Output to screen
 out vec4 FragColor;
 
-//Note that we could have defined uniforms here and used them as well
+// The current texture
+uniform sampler2D tex;
 
 void main()
 {
-    FragColor = vec4(color.x, color.y, color.z, 1.0);
+    // We take a pixel (sample) from the image into the model
+    FragColor = texture(tex, uvOut);
 }

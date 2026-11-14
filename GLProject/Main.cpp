@@ -1,20 +1,89 @@
-#define LECTURE_TITLE "Hello Tetrahedron"
-#define WINDOW_HEIGHT 800
-#define WINDOW_WIDTH 800
+#define LECTURE_TITLE "Hello Textured Model"
+#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH 1280
 
 #include "libs/glad_loader_docs.h"
 #include <GLFW/glfw3.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #include "model.h"
 #include "shader_program.h"
+#include "textured_model.h"
 
 using namespace std;
 using namespace glm;
+using namespace Assimp;
+
+GLuint generateTexture(const char *imagePath) {
+  // Load image file
+  int width, height, nrChannels;
+  unsigned char *data = stbi_load(imagePath, &width, &height, &nrChannels, 0);
+
+  GLuint texture;
+
+  glGenTextures(1, &texture);
+
+  // Set as current
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  // Set wrapping modes along u (s) and v (t)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  // Set minimize and maximize filters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  // Load image data into VRAM
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+               GL_UNSIGNED_BYTE, data);
+
+  stbi_image_free(data);
+
+  return texture;
+}
+
+TexturedModel loadModelFromFile(const char *meshPath) {
+  Importer importer;
+
+  // Load the model file
+  // Note that we are triangulating it here with aiProcess_Triangulate flag
+  // So that we are sure everything is composed of triangles
+  const aiScene *scene = importer.ReadFile(meshPath, aiProcess_Triangulate);
+
+  // We want the first mesh (group of vertices) in the model file
+  aiMesh *mesh = scene->mMeshes[0];
+
+  vector<vec3> positions(mesh->mNumFaces * 3);
+  vector<vec2> uvs(mesh->mNumFaces * 3);
+
+  // Now we iterate over the faces of the mesh
+  for (int i = 0; i < mesh->mNumFaces; ++i) {
+    // For each face
+    for (int j = 0; j < mesh->mFaces[i].mNumIndices; ++j) {
+
+      // We obtain the index of the vertex and grab its position and uv data
+      auto position = mesh->mVertices[mesh->mFaces[i].mIndices[j]];
+      auto uv = mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[j]];
+
+      positions.push_back({position.x, position.y, position.z});
+      uvs.push_back({uv.x, uv.y});
+    }
+  }
+
+  return TexturedModel(positions, uvs);
+}
 
 // Gets called whenever the application window is resized
 void windowResizeCallback(GLFWwindow *window, int width, int height) {
@@ -73,67 +142,46 @@ int main(int argc, char *argv[]) {
   positions.push_back({-1, 1, -1});
   positions.push_back({-1, -1, 1});
 
-  vector<vec3> colors = {};
+  vector<vec2> uvs;
 
   // First face
-  for (int i = 0; i < 3; ++i) {
-    colors.push_back({1, 1, 1});
-  }
+  uvs.push_back({1, 1});
+  uvs.push_back({0, 0});
+  uvs.push_back({0, 1});
 
   // Second face
-  for (int i = 0; i < 3; ++i) {
-    colors.push_back({1, 0, 0});
-  }
+  uvs.push_back({1, 1});
+  uvs.push_back({1, 0});
+  uvs.push_back({0, 0});
 
   // Third face
-  for (int i = 0; i < 3; ++i) {
-    colors.push_back({0, 1, 0});
-  }
+  uvs.push_back({1, 0});
+  uvs.push_back({0, 1});
+  uvs.push_back({0, 0});
 
-  // Forth face
-  for (int i = 0; i < 3; ++i) {
-    colors.push_back({0, 0, 1});
-  }
+  // Fourth face
+  uvs.push_back({1, 1});
+  uvs.push_back({0, 1});
+  uvs.push_back({0, 0});
 
-  // Define a 3D model using the position and color data
-  Model tetrahedron(positions, colors);
+  TexturedModel tetrahedron(positions, uvs);
 
-  if (GLenum err = glGetError() != 0) {
-    return err;
-  }
-  vector<vec3> positionsStripe = {};
-
-  for (float x = -2.0f; x < 2; x += 0.1f) {
-    float sinX = sin(x);
-
-    positionsStripe.push_back({x, sinX, 0});
-    positionsStripe.push_back({x, sinX + 1, 0});
-  }
-
-  vector<vec3> colorsStripe(positionsStripe.size(), {1, 1, 1});
-
-  Model stripe(positionsStripe, colorsStripe);
+  // We load this model from file
+  // The file path is passed as a parameter
+  TexturedModel sphere = loadModelFromFile("sphere.glb");
 
   if (GLenum err = glGetError() != 0) {
     return err;
   }
 
-  vector<vec3> positionsFan = {{0, 0, 0}};
-
-  for (float angle = 0.0f; angle <= 3.14f * 2.0f; angle += 0.1f) {
-    float x = cos(angle);
-    float y = sin(angle);
-
-    positionsFan.push_back({x, y, 0});
-  }
-
-  vector<vec3> colorsFan(positionsFan.size(), {1, 1, 1});
-
-  Model fan(positionsFan, colorsFan);
+  // We load two textures into the VRAM
+  GLuint texture = generateTexture("./texture.png");
+  GLuint texture2 = generateTexture("./texture2.png");
 
   if (GLenum err = glGetError() != 0) {
     return err;
   }
+
   // Load and link shader files
   ShaderProgram shaderProgram("shaders/shader.vert", "shaders/shader.frag");
 
@@ -153,8 +201,6 @@ int main(int argc, char *argv[]) {
       glGetUniformLocation(shaderProgram.getProgram(), "view");
   GLuint perspectiveMatrixLocation =
       glGetUniformLocation(shaderProgram.getProgram(), "perspective");
-  GLuint timeLocation =
-      glGetUniformLocation(shaderProgram.getProgram(), "time");
 
   if (GLenum err = glGetError() != 0) {
     return err;
@@ -210,7 +256,7 @@ int main(int argc, char *argv[]) {
     angle += deltaTime;
 
     mat4 rotation = rotate(mat4(1.0f), angle, {0, 1, 0});
-    mat4 translation = translate(mat4(1.0f), {0, 0, -5});
+    mat4 translation = translate(mat4(1.0f), {0, 0, -7});
 
     // We first apply the rotation (around the center)
     // Followed by a translation
@@ -218,18 +264,20 @@ int main(int argc, char *argv[]) {
 
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
 
-    // Set the time variable value
-    glUniform1f(timeLocation, thisFrameTime);
-
     // Note that now we ALSO clear the depth values
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw the tetrahedron, the final result will be translated and rotated
-    tetrahedron.draw(GL_TRIANGLES);
+    // Set the current texture
+    glBindTexture(GL_TEXTURE_2D, texture);
+    tetrahedron.draw();
 
-    // stripe.draw(GL_TRIANGLE_STRIP);
+    // We update the model matrix so our models do not overlap
+    modelMatrix = translate(mat4(1.0f), {2, 0, -7});
+    glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
 
-    //fan.draw(GL_TRIANGLE_FAN);
+    // Switch the current texture as well
+    glBindTexture(GL_TEXTURE_2D, texture2);
+    sphere.draw();
 
     // Draw the final pixels/image on the created window
     glfwSwapBuffers(window);
