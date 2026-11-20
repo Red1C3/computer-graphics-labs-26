@@ -24,7 +24,7 @@ using namespace std;
 using namespace glm;
 using namespace Assimp;
 
-GLuint generateTexture(const char *imagePath) {
+GLuint generateTexture(const char* imagePath) {
   // Load image file
   int width, height, nrChannels;
   unsigned char *data = stbi_load(imagePath, &width, &height, &nrChannels, 0);
@@ -41,7 +41,8 @@ GLuint generateTexture(const char *imagePath) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
   // Set minimize and maximize filters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+      GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   // Load image data into VRAM
@@ -53,35 +54,30 @@ GLuint generateTexture(const char *imagePath) {
   return texture;
 }
 
-TexturedModel loadModelFromFile(const char *meshPath) {
+TexturedModel loadModelFromFile(const char* meshPath) {
   Importer importer;
 
-  // Load the model file
-  // Note that we are triangulating it here with aiProcess_Triangulate flag
-  // So that we are sure everything is composed of triangles
-  const aiScene *scene = importer.ReadFile(meshPath, aiProcess_Triangulate);
+  const aiScene* scene = importer.ReadFile(meshPath, aiProcess_Triangulate);
 
-  // We want the first mesh (group of vertices) in the model file
-  aiMesh *mesh = scene->mMeshes[0];
+  aiMesh* mesh = scene->mMeshes[0];
 
   vector<vec3> positions(mesh->mNumFaces * 3);
   vector<vec2> uvs(mesh->mNumFaces * 3);
+  vector<vec3> normals(mesh->mNumFaces * 3); // Read and parse normals as well
 
-  // Now we iterate over the faces of the mesh
   for (int i = 0; i < mesh->mNumFaces; ++i) {
-    // For each face
-    for (int j = 0; j < mesh->mFaces[i].mNumIndices; ++j) {
+      for (int j = 0; j < mesh->mFaces[i].mNumIndices; ++j) {
+          auto position = mesh->mVertices[mesh->mFaces[i].mIndices[j]];
+          auto uv = mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[j]];
+          auto normal = mesh->mNormals[mesh->mFaces[i].mIndices[j]];
 
-      // We obtain the index of the vertex and grab its position and uv data
-      auto position = mesh->mVertices[mesh->mFaces[i].mIndices[j]];
-      auto uv = mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[j]];
-
-      positions.push_back({position.x, position.y, position.z});
-      uvs.push_back({uv.x, uv.y});
-    }
+          positions.push_back({ position.x, position.y, position.z });
+          uvs.push_back({ uv.x, uv.y });
+          normals.push_back({ normal.x, normal.y, normal.z });
+      }
   }
 
-  return TexturedModel(positions, uvs);
+  return TexturedModel(positions, uvs, normals);
 }
 
 // Gets called whenever the application window is resized
@@ -119,51 +115,10 @@ int main(int argc, char *argv[]) {
   // Enable depth
   glEnable(GL_DEPTH_TEST);
 
-  vector<vec3> positions = {};
-
-  // First face
-  positions.push_back({1, 1, 1});
-  positions.push_back({1, -1, -1});
-  positions.push_back({-1, 1, -1});
-
-  // Second face
-  positions.push_back({1, 1, 1});
-  positions.push_back({1, -1, -1});
-  positions.push_back({-1, -1, 1});
-
-  // Third face
-  positions.push_back({1, -1, -1});
-  positions.push_back({-1, 1, -1});
-  positions.push_back({-1, -1, 1});
-
-  // Fourth face
-  positions.push_back({1, 1, 1});
-  positions.push_back({-1, 1, -1});
-  positions.push_back({-1, -1, 1});
-
-  vector<vec2> uvs;
-
-  // First face
-  uvs.push_back({1, 1});
-  uvs.push_back({0, 0});
-  uvs.push_back({0, 1});
-
-  // Second face
-  uvs.push_back({1, 1});
-  uvs.push_back({1, 0});
-  uvs.push_back({0, 0});
-
-  // Third face
-  uvs.push_back({1, 0});
-  uvs.push_back({0, 1});
-  uvs.push_back({0, 0});
-
-  // Fourth face
-  uvs.push_back({1, 1});
-  uvs.push_back({0, 1});
-  uvs.push_back({0, 0});
-
-  TexturedModel tetrahedron(positions, uvs);
+  // Enable blending and set the blending function
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_CULL_FACE);
 
   // We load this model from file
   // The file path is passed as a parameter
@@ -200,6 +155,8 @@ int main(int argc, char *argv[]) {
       glGetUniformLocation(shaderProgram.getProgram(), "view");
   GLuint perspectiveMatrixLocation =
       glGetUniformLocation(shaderProgram.getProgram(), "perspective");
+  GLuint transparencyLocation =
+    glGetUniformLocation(shaderProgram.getProgram(), "transparent");
 
   if (GLenum err = glGetError() != 0) {
     return err;
@@ -252,30 +209,29 @@ int main(int argc, char *argv[]) {
     lastFrameTime = thisFrameTime;
 
     // Add the change to the rotation angle
+    
+    // Note that now we ALSO clear the depth values
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
     angle += deltaTime;
-
-    mat4 rotation = rotate(mat4(1.0f), angle, {0, 1, 0});
-    mat4 translation = translate(mat4(1.0f), {0, 0, -7});
+    
+    mat4 rotation = rotate(mat4(1.0f), angle, { 0, 1, 0 });
+    mat4 translation = translate(mat4(1.0f), { 0, 0, -7 });
 
     // We first apply the rotation (around the center)
     // Followed by a translation
     mat4 modelMatrix = translation * rotation;
 
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
+    glUniform1i(transparencyLocation, 0); // Not transparent
 
-    // Note that now we ALSO clear the depth values
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Set the current texture
     glBindTexture(GL_TEXTURE_2D, texture);
-    tetrahedron.draw();
+    sphere.draw();
 
-    // We update the model matrix so our models do not overlap
-    modelMatrix = translate(mat4(1.0f), {2, 0, -7});
+    modelMatrix = translate(mat4(1.0f), { 1, -1, -5 });
+
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
-
-    // Switch the current texture as well
-    glBindTexture(GL_TEXTURE_2D, texture2);
+    glUniform1i(transparencyLocation, 1); //Transparent
     sphere.draw();
 
     // Draw the final pixels/image on the created window
